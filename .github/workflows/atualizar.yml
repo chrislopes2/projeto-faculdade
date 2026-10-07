@@ -1,0 +1,79 @@
+# Atualiza os dados e publica o site no GitHub Pages.
+# Roda todo dia 20 (o INSS e o CAGED publicam o mês anterior ao longo do mês) e pode ser disparado à mão.
+name: Atualizar dados e publicar
+
+on:
+  schedule:
+    - cron: "0 6 20 * *"
+  workflow_dispatch:
+    inputs:
+      exemplo:
+        description: "Usar dados de exemplo (fictícios)?"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Guarda os downloads entre execuções para baixar só os meses novos.
+      - uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: raw-${{ github.run_id }}
+          restore-keys: raw-
+
+      - name: Rodar o pipeline
+        run: |
+          if [ "${{ github.event.inputs.exemplo }}" = "true" ]; then
+            python -m pipeline.run --exemplo
+          else
+            python -m pipeline.run
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build do site
+        working-directory: site
+        env:
+          NEXT_BASE_PATH: /${{ github.event.repository.name }}
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
