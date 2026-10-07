@@ -1,6 +1,7 @@
 """Funções auxiliares compartilhadas."""
 import re
 import shutil
+import subprocess
 import unicodedata
 import urllib.request
 from pathlib import Path
@@ -32,10 +33,15 @@ def baixar(url: str, destino: Path, forcar: bool = False) -> Path:
 
 
 def extrair_7z(arquivo: Path, pasta: Path) -> list[Path]:
-    import py7zr
-
+    """Extrai um .7z. Usa o 7z do sistema quando existe: os arquivos da RAIS usam
+    compressão que o py7zr não lê ("invalid header data")."""
     pasta.mkdir(parents=True, exist_ok=True)
-    with py7zr.SevenZipFile(arquivo, "r") as z:
-        nomes = z.getnames()
-        z.extractall(pasta)
-    return [pasta / n for n in nomes]
+    antes = set(pasta.iterdir())
+    if shutil.which("7z"):
+        subprocess.run(["7z", "x", "-y", f"-o{pasta}", str(arquivo)], check=True, stdout=subprocess.DEVNULL)
+    else:
+        import py7zr
+
+        with py7zr.SevenZipFile(arquivo, "r") as z:
+            z.extractall(pasta)
+    return sorted(p for p in set(pasta.iterdir()) - antes if p.is_file())
