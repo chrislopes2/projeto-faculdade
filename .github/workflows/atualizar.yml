@@ -46,6 +46,8 @@ jobs:
           restore-keys: raw-
 
       - name: Rodar o pipeline
+        env:
+          PYTHONUNBUFFERED: "1"
         run: |
           if [ "${{ github.event.inputs.exemplo }}" = "true" ]; then
             python -m pipeline.run --exemplo

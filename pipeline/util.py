@@ -24,10 +24,25 @@ def baixar(url: str, destino: Path, forcar: bool = False) -> Path:
     if destino.exists() and destino.stat().st_size > 0 and not forcar:
         print(f"  já existe: {destino.name}")
         return destino
-    print(f"  baixando {url}")
+    print(f"  baixando {url}", flush=True)
     tmp = destino.with_suffix(destino.suffix + ".part")
-    with urllib.request.urlopen(url, timeout=600) as resp, open(tmp, "wb") as f:
-        shutil.copyfileobj(resp, f)
+    if shutil.which("curl"):
+        # O FTP do PDET derruba conexões longas (arquivos da RAIS têm GB); o curl
+        # tenta de novo e continua de onde parou (-C -).
+        for _ in range(5):
+            r = subprocess.run(["curl", "--fail", "--silent", "--show-error", "--retry", "5",
+                                "--retry-all-errors", "--retry-delay", "15", "-C", "-",
+                                "-o", str(tmp), url])
+            if r.returncode == 0:
+                break
+            if r.returncode == 78:  # arquivo não existe no servidor (ex.: mês ainda não publicado)
+                tmp.unlink(missing_ok=True)
+                raise FileNotFoundError(url)
+        else:
+            raise RuntimeError(f"falha ao baixar {url} (curl saiu com {r.returncode})")
+    else:
+        with urllib.request.urlopen(url, timeout=600) as resp, open(tmp, "wb") as f:
+            shutil.copyfileobj(resp, f)
     tmp.rename(destino)
     return destino
 
