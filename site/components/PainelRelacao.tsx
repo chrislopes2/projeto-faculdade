@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useMemo } from "react";
 import type { Cores } from "@/lib/cores";
-import { fmt, soma, UFS } from "@/lib/calc";
-import type { Correlacao, LinhaSerie, Meta, Setor } from "@/lib/tipos";
+import { fmt, fmtMes, soma, UFS } from "@/lib/calc";
+import type { Correlacao, Filiacao, LinhaSerie, Meta } from "@/lib/tipos";
 import { base, Grafico } from "./Grafico";
 
 function leitura(r: number | null) {
@@ -12,7 +12,7 @@ function leitura(r: number | null) {
   return `${forca}, ${r >= 0 ? "positiva" : "negativa"}`;
 }
 
-export function PainelRelacao({ serie, correlacao, setores, meta }: { serie: LinhaSerie[]; correlacao: Correlacao; setores: Setor[]; meta: Meta }) {
+export function PainelRelacao({ serie, correlacao, filiacao, meta }: { serie: LinhaSerie[]; correlacao: Correlacao; filiacao: Filiacao[]; meta: Meta }) {
   const pontos = useMemo(() => {
     const ult = new Set(meta.ultimos_12_meses);
     return UFS.map((u) => {
@@ -64,6 +64,22 @@ export function PainelRelacao({ serie, correlacao, setores, meta }: { serie: Lin
     [correlacao],
   );
 
+  const porFiliacao = useCallback(
+    (c: Cores) => ({
+      ...base(c),
+      xAxis: { ...(base(c).xAxis as object), type: "category", data: filiacao.map((f) => fmtMes(f.mes)) },
+      yAxis: { ...(base(c).yAxis as object), type: "value" },
+      series: meta.filiacoes.map((f) => ({
+        name: f.nome, type: "line", symbol: "none", lineStyle: { width: 2 },
+        data: filiacao.map((r) => r[f.chave as keyof Filiacao] as number),
+      })),
+    }),
+    [filiacao, meta],
+  );
+  const ultFil = filiacao.slice(-12);
+  const totFil = ultFil.reduce((t, r) => t + r.empregado + r.desempregado + r.autonomo + r.outros, 0);
+  const partDesemp = totFil ? (100 * ultFil.reduce((t, r) => t + r.desempregado, 0)) / totFil : null;
+
   const r = correlacao.entre_ufs.r;
   return (
     <>
@@ -88,29 +104,16 @@ export function PainelRelacao({ serie, correlacao, setores, meta }: { serie: Lin
           }}
         />
       </div>
-      <h2 style={{ fontSize: 19, marginTop: 28 }}>Por setor (aproximado)</h2>
-      <p className="nota">
-        O INSS informa o &quot;ramo de atividade&quot; e o CAGED usa CNAE. A correspondência entre os dois é aproximada,
-        então compare os setores entre si, não com os números das outras páginas.
-      </p>
-      <div className="cartao tabela-rolagem">
-        <table>
-          <thead>
-            <tr><th>Setor</th><th>Afastamentos mentais / 100 mil / mês</th><th>Demissões s/ justa causa / 100 mil / mês</th></tr>
-          </thead>
-          <tbody>
-            {setores.map((s) => {
-              const v = (s.vinculos_medio || 0) * meta.ultimos_12_meses.length || 1;
-              return (
-                <tr key={s.setor}>
-                  <td>{s.nome}</td>
-                  <td>{fmt((s.afast_mental / v) * 1e5, 1)}</td>
-                  <td>{fmt((s.demissoes_sjc / v) * 1e5)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div style={{ marginTop: 16 }}>
+        <Grafico
+          titulo="Quem se afasta por saúde mental: empregado ou desempregado?"
+          descricao={`Número de afastamentos por mês no Brasil, pela situação do segurado no INSS. "Desempregado" é quem perdeu o emprego e ainda tem cobertura (período de graça). Nos últimos 12 meses, ${fmt(partDesemp, 1)}% dos afastamentos foram de desempregados.`}
+          montar={porFiliacao}
+          tabela={{
+            colunas: ["Mês", ...meta.filiacoes.map((f) => f.nome)],
+            linhas: filiacao.map((r) => [fmtMes(r.mes), ...meta.filiacoes.map((f) => fmt(r[f.chave as keyof Filiacao] as number))]),
+          }}
+        />
       </div>
     </>
   );

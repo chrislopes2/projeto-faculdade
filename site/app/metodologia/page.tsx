@@ -45,7 +45,8 @@ export default function Pagina() {
       <ul>
         <li>Correlação não é causalidade. Crises econômicas, sazonalidade e mudanças nas regras do INSS afetam as duas taxas.</li>
         <li>Só o trabalho formal entra nas contas. Informais e servidores de regime próprio ficam de fora.</li>
-        <li>As bases são anonimizadas e não se ligam por pessoa: o cruzamento é por mês, estado e setor.</li>
+        <li>As bases são anonimizadas e não se ligam por pessoa: o cruzamento é por mês e estado.</li>
+        <li>O INSS quase nunca informa o setor (CNAE) do segurado, por isso não há recorte por setor. A UF é a de residência.</li>
         <li>O autismo (F84) aparece sobretudo no BPC (espécie 87), não como afastamento, e é mostrado à parte.</li>
         <li>Burnout costuma ser registrado também como F43 (reação ao estresse), por isso os dois ficam no mesmo grupo.</li>
       </ul>

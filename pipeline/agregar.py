@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from pipeline.config import (AFASTAMENTO, BPC_PCD, CAGED_A_PEDIDO, CAGED_SEM_JUSTA_CAUSA,
-                             CLEAN, GRUPOS_CID, SAIDA, SETORES)
+                             CLEAN, FILIACOES, GRUPOS_CID, SAIDA)
 
 GRUPO_SQL = "CASE " + " ".join(
     "WHEN " + " OR ".join(f"cid LIKE '{p}%'" for p in prefixos) + f" THEN '{chave}'"
@@ -83,25 +83,17 @@ def perfil(con, ultimos: list[str]) -> pd.DataFrame:
     """).df()
 
 
-def setores(con, ultimos: list[str]) -> pd.DataFrame:
-    comps = ",".join(f"'{m.replace('-', '')}'" for m in ultimos)
-    linhas = []
-    vinc = _vinculos_por_mes(con, ultimos, "secao")
-    for chave, (nome, secoes, ramos) in SETORES.items():
-        cond_ramo = " OR ".join(f"ramo LIKE '%{r}%'" for r in ramos)
-        sec = ",".join(f"'{s}'" for s in secoes)
-        afast = con.sql(f"""
-            SELECT count(*) FROM (SELECT *, {GRUPO_SQL} AS grupo FROM inss)
-            WHERE especie IN {LISTA(AFASTAMENTO)} AND grupo <> 'outros'
-              AND competencia IN ({comps}) AND ({cond_ramo})""").fetchone()[0]
-        dem = con.sql(f"""
-            SELECT coalesce(sum(n), 0) FROM caged
-            WHERE tipo_mov IN {LISTA(CAGED_SEM_JUSTA_CAUSA)} AND secao IN ({sec})
-              AND competencia IN ({comps})""").fetchone()[0]
-        v = vinc[vinc.secao.isin(secoes)].groupby("mes").vinculos.sum().mean()
-        linhas.append({"setor": chave, "nome": nome, "afast_mental": int(afast),
-                       "demissoes_sjc": int(dem), "vinculos_medio": int(v) if pd.notna(v) else None})
-    return pd.DataFrame(linhas)
+def filiacao(con) -> pd.DataFrame:
+    """Afastamentos por saúde mental no Brasil, por mês e forma de filiação do segurado."""
+    cols = ", ".join(f"count(*) FILTER (filiacao = '{c}') AS {c}" for c, _, _ in FILIACOES)
+    df = con.sql(f"""
+        SELECT competencia, {cols}
+        FROM (SELECT *, {GRUPO_SQL} AS grupo FROM inss)
+        WHERE especie IN {LISTA(AFASTAMENTO)} AND grupo <> 'outros'
+        GROUP BY ALL ORDER BY 1
+    """).df()
+    df["mes"] = _mes(df.competencia)
+    return df.drop(columns="competencia")
 
 
 def bpc_autismo(con) -> pd.DataFrame:
@@ -154,7 +146,7 @@ def agregar(exemplo: bool = False) -> None:
     print("Exportando")
     _json("serie.json", s)
     _json("perfil.json", perfil(con, ultimos))
-    _json("setores.json", setores(con, ultimos))
+    _json("filiacao.json", filiacao(con))
     _json("bpc_autismo.json", bpc_autismo(con))
     _json("correlacao.json", correlacoes(s, ultimos))
     _json("meta.json", {
@@ -163,6 +155,7 @@ def agregar(exemplo: bool = False) -> None:
         "periodo": {"inicio": meses[0], "fim": meses[-1]},
         "ultimos_12_meses": ultimos,
         "grupos_cid": [{"chave": c, "nome": n, "cids": list(p)} for c, n, p in GRUPOS_CID],
+        "filiacoes": [{"chave": c, "nome": n} for c, n, _ in FILIACOES],
     })
 
 

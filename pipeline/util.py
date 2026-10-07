@@ -35,7 +35,7 @@ def baixar(url: str, destino: Path, forcar: bool = False) -> Path:
                                 "-o", str(tmp), url])
             if r.returncode == 0:
                 break
-            if r.returncode == 78:  # arquivo não existe no servidor (ex.: mês ainda não publicado)
+            if r.returncode in (9, 78):  # pasta ou arquivo não existe (ex.: mês ainda não publicado)
                 tmp.unlink(missing_ok=True)
                 raise FileNotFoundError(url)
         else:
