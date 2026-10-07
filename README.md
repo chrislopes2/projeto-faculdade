@@ -45,6 +45,14 @@ O site mostra uma faixa amarela de "dados de exemplo" enquanto os JSON vierem do
 No GitHub, em Settings > Pages, escolha "GitHub Actions" como fonte. O workflow roda todo dia 20 e quando
 disparado à mão em Actions (lá dá para escolher dados de exemplo, útil para a primeira publicação).
 
+## Supabase (opcional)
+
+1. No SQL Editor do Supabase, rode `supabase/schema.sql` uma vez.
+2. No GitHub, em Settings > Secrets and variables > Actions, crie `SUPABASE_URL`
+   (ex.: `https://<ref>.supabase.co`) e `SUPABASE_SERVICE_ROLE_KEY`.
+3. A cada execução com dados reais, o workflow faz upsert dos resultados nas tabelas.
+   Com dados de exemplo nada é enviado.
+
 ## Pontos a conferir na primeira carga real
 
 - **INSS:** os nomes de coluna mudam entre meses. `transformar.py` procura cada campo por palavra-chave

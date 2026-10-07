@@ -25,6 +25,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,6 +51,13 @@ jobs:
           else
             python -m pipeline.run
           fi
+
+      # Só roda se os secrets existirem e os dados forem reais.
+      - name: Enviar ao Supabase
+        if: ${{ env.SUPABASE_URL != '' && github.event.inputs.exemplo != 'true' }}
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m pipeline.supabase
 
       - uses: actions/setup-node@v4
         with:
