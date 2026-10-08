@@ -1,5 +1,6 @@
 import type { LinhaSerie } from "./tipos";
 
+export const BASE = process.env.NEXT_PUBLIC_BASE ?? "";
 export const POR = 100_000; // taxas por 100 mil vínculos formais
 
 export const taxa = (n: number | null, base: number | null) =>

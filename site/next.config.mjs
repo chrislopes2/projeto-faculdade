@@ -5,6 +5,8 @@
 export default {
   output: "export",
   basePath: process.env.NEXT_BASE_PATH || "",
+  // Para links a arquivos estáticos (o PDF), que o <Link> não prefixa.
+  env: { NEXT_PUBLIC_BASE: process.env.NEXT_BASE_PATH || "" },
   images: { unoptimized: true },
   trailingSlash: true,
 };

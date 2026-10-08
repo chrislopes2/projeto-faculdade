@@ -5,7 +5,7 @@
 """
 import argparse
 
-from pipeline import agregar, transformar
+from pipeline import agregar, analise, relatorio, transformar
 
 
 def main() -> None:
@@ -27,6 +27,10 @@ def main() -> None:
             rais.coletar(ano)
     transformar.transformar()
     agregar.agregar(exemplo=a.exemplo)
+    print("Análises")
+    analise.analisar()
+    print("Relatório")
+    relatorio.gerar()
 
 
 if __name__ == "__main__":

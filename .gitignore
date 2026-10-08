@@ -5,3 +5,4 @@ __pycache__/
 site/node_modules/
 site/.next/
 site/out/
+site/public/relatorio.pdf

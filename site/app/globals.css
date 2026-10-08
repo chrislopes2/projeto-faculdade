@@ -67,3 +67,14 @@ th { color: var(--texto2); font-weight: 600; }
 .texto h2 { font-size: 19px; margin-top: 28px; }
 .nota { font-size: 13px; color: var(--mudo); }
 footer { font-size: 13px; color: var(--mudo); padding-bottom: 32px; }
+.formula { background: var(--superficie); border: 1px solid var(--borda); border-left: 3px solid var(--destaque); border-radius: 6px;
+  padding: 8px 12px; margin: 8px 0; font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tabela-rolagem.sem-limite { max-height: none; margin: 8px 0 12px; }
+.texto ol, .texto ul { padding-left: 20px; }
+.texto li { margin-bottom: 4px; }
+.botao { display: inline-block; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--borda); background: var(--superficie);
+  color: var(--texto); text-decoration: none; font-size: 14px; }
+.botao:hover { border-color: var(--destaque); }
+.analises section { margin: 32px 0; max-width: 900px; }
+.analises h2 { font-size: 19px; margin: 0 0 4px; }
+.analises section > p:not(.desc) { max-width: 760px; }

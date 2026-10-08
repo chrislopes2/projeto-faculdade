@@ -15,5 +15,7 @@ export function carregar(): Dados {
     bpc: ler("bpc_autismo.json"),
     correlacao: ler("correlacao.json"),
     meta: ler("meta.json"),
+    analise: ler("analise.json"),
+    memoria: ler("memoria.json"),
   };
 }
