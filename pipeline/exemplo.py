@@ -106,6 +106,8 @@ def gerar_inss() -> None:
             "Clientela": "Urbano",
             "UF": [nomes_uf[u].title() if rng.random() < .5 else u for u in ufs],
             "Ramo Atividade": [RAMO_SEC.get(s, "Outros") for s in sec],
+            "Forma Filiação": rng.choice(["Empregado", "Desempregado", "Autônomo", "Segurado Especial"], len(ufs), p=[.55, .2, .17, .08]),
+            "Mun Resid": [f"00000-{u}-Exemplo" for u in ufs],
         })
         df.to_csv(pasta / f"concedidos_{per.strftime('%Y%m')}.csv", sep=";", index=False, encoding="utf-8")
 

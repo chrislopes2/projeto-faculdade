@@ -16,7 +16,7 @@ export type LinhaSerie = {
   vinculos: number | null;
 };
 export type Perfil = { grupo: string; sexo: string; faixa: string; n: number };
-export type Setor = { setor: string; nome: string; afast_mental: number; demissoes_sjc: number; vinculos_medio: number | null };
+export type Filiacao = { mes: string; empregado: number; desempregado: number; autonomo: number; outros: number };
 export type Bpc = { mes: string; bpc: number; afastamento: number };
 export type Correlacao = {
   serie_nacional: { defasagem_meses: number; r: number | null; n_meses: number }[];
@@ -28,5 +28,6 @@ export type Meta = {
   periodo: { inicio: string; fim: string };
   ultimos_12_meses: string[];
   grupos_cid: { chave: string; nome: string; cids: string[] }[];
+  filiacoes: { chave: string; nome: string }[];
 };
-export type Dados = { serie: LinhaSerie[]; perfil: Perfil[]; setores: Setor[]; bpc: Bpc[]; correlacao: Correlacao; meta: Meta };
+export type Dados = { serie: LinhaSerie[]; perfil: Perfil[]; filiacao: Filiacao[]; bpc: Bpc[]; correlacao: Correlacao; meta: Meta };

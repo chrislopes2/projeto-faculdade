@@ -35,20 +35,31 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - run: sudo apt-get install -y p7zip-full
+
       # Guarda os downloads entre execuções para baixar só os meses novos.
-      - uses: actions/cache@v4
+      # Restaura aqui e salva logo depois do pipeline, mesmo se ele falhar, para não baixar tudo de novo.
+      - uses: actions/cache/restore@v4
         with:
           path: data/raw
           key: raw-${{ github.run_id }}
           restore-keys: raw-
 
       - name: Rodar o pipeline
+        env:
+          PYTHONUNBUFFERED: "1"
         run: |
           if [ "${{ github.event.inputs.exemplo }}" = "true" ]; then
             python -m pipeline.run --exemplo
           else
             python -m pipeline.run
           fi
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: data/raw
+          key: raw-${{ github.run_id }}
 
       - uses: actions/setup-node@v4
         with:

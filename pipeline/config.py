@@ -74,12 +74,11 @@ def secao_cnae(divisao: int) -> str:
             return s
     return "Z"
 
-# O INSS informa "ramo de atividade", não CNAE. Correspondência aproximada
-# entre seções CNAE e ramos, usada só na página de setores (marcada como aproximada).
-SETORES = {
-    "agro": ("Agropecuária", ("A",), ("RURAL",)),
-    "industria": ("Indústria e construção", ("B", "C", "D", "E", "F"), ("INDUSTRI",)),
-    "comercio": ("Comércio", ("G",), ("COMERCI",)),
-    "transporte": ("Transportes", ("H",), ("TRANSPORT", "FERROVI", "PORTUARI", "MARITIM", "AERONAUT")),
-    "financeiro": ("Serviços financeiros", ("K",), ("BANCARI", "ECONOMIARI")),
-}
+# "Forma de filiação" do segurado no INSS. "Desempregado" é quem perdeu o emprego e
+# ainda está no período de graça: é o elo mais direto entre demissão e afastamento.
+FILIACOES = [
+    ("empregado", "Empregado", ("EMPREGADO", "DOMESTICO", "AVULSO")),
+    ("desempregado", "Desempregado", ("DESEMPREGADO",)),
+    ("autonomo", "Autônomo", ("AUTONOMO", "INDIVIDUAL")),
+    ("outros", "Outros", ()),
+]

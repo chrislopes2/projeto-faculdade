@@ -11,7 +11,7 @@ export function carregar(): Dados {
   return {
     serie: ler("serie.json"),
     perfil: ler("perfil.json"),
-    setores: ler("setores.json"),
+    filiacao: ler("filiacao.json"),
     bpc: ler("bpc_autismo.json"),
     correlacao: ler("correlacao.json"),
     meta: ler("meta.json"),

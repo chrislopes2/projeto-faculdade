@@ -10,7 +10,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from pipeline.config import CLEAN, RAW, UF_NOMES, UFS, secao_cnae
+from pipeline.config import CLEAN, FILIACOES, RAW, UF_NOMES, UFS, secao_cnae
 from pipeline.util import nome_coluna, sem_acento
 
 RE_CID = re.compile(r"\b([A-Z])\s?(\d{2})\.?(\d)?")
@@ -21,11 +21,13 @@ SIGLAS = set(UFS.values())
 
 def _ler_tabela(arq: Path) -> pd.DataFrame:
     if arq.suffix in (".xlsx", ".xls"):
-        bruto = pd.read_excel(arq, header=None, nrows=20, dtype=str)
+        # calamine lê os XLSX do INSS (~850 mil linhas) muito mais rápido que o openpyxl.
+        # A primeira linha é um título; o cabeçalho é a primeira linha que cita "Espécie".
+        bruto = pd.read_excel(arq, header=None, nrows=20, dtype=str, engine="calamine")
         linha = next(
             (i for i, r in bruto.iterrows()
              if any("esp" in nome_coluna(v) for v in r.dropna())), 0)
-        df = pd.read_excel(arq, header=linha, dtype=str)
+        df = pd.read_excel(arq, header=linha, dtype=str, engine="calamine")
     else:
         for enc in ("utf-8", "latin-1"):
             try:
@@ -80,6 +82,15 @@ def _uf(valor: str) -> str | None:
     return UF_NOMES.get(v)
 
 
+def _filiacao(valor: str) -> str:
+    v = sem_acento(valor).upper() if isinstance(valor, str) else ""
+    # "DESEMPREGADO" contém "EMPREGADO": a ordem de FILIACOES resolve, mas testamos o mais específico antes.
+    for chave, _, termos in sorted(FILIACOES, key=lambda f: f[0] != "desempregado"):
+        if any(t in v for t in termos):
+            return chave
+    return "outros"
+
+
 def _competencia(valor, padrao: str) -> str:
     if isinstance(valor, str):
         m = re.search(r"(20\d{2})[-/]?(0[1-9]|1[0-2])", valor)
@@ -97,12 +108,14 @@ def limpar_inss() -> pd.DataFrame:
         padrao = re.search(r"(\d{6})", arq.name).group(1)
         df = _ler_tabela(arq)
         c_esp = _coluna(df, "especie")
-        c_cid = _coluna(df, "cid", validar=lambda s: s.astype(str).str.contains(r"[A-Z]\d{2}").mean() > 0.5)
+        # Há duas colunas "CID" (código e descrição); benefícios sem CID vêm como "0".
+        c_cid = _coluna(df, "cid", validar=lambda s: s.astype(str).str.contains(r"[A-Z]\d{2}").any())
         c_uf = _coluna(df, "uf")
         c_comp = _coluna(df, "competencia")
         c_sexo = _coluna(df, "sexo")
         c_nasc = _coluna(df, "nasc")
-        c_ramo = _coluna(df, "ramo")
+        c_mun = _coluna(df, "mun_resid")
+        c_filiacao = _coluna(df, "filiacao")
         faltando = [n for n, c in (("espécie", c_esp), ("CID", c_cid), ("UF", c_uf)) if c is None]
         if faltando:
             print(f"  {arq.name}: colunas não encontradas {faltando}; colunas: {list(df.columns)}")
@@ -111,10 +124,13 @@ def limpar_inss() -> pd.DataFrame:
             "competencia": df[c_comp].map(lambda v: _competencia(v, padrao)) if c_comp else padrao,
             "especie": df[c_esp].map(_especie),
             "cid": df[c_cid].map(_cid),
-            "uf": df[c_uf].map(_uf),
+            # UF de residência ("02043-AL-Maceió"); a coluna UF é a da agência e concentra
+            # no DF os processos analisados por centrais remotas.
+            "uf": (df[c_mun].str.extract(r"-([A-Z]{2})-", expand=False).where(lambda u: u.isin(SIGLAS))
+                   .fillna(df[c_uf].map(_uf)) if c_mun else df[c_uf].map(_uf)),
             "sexo": df[c_sexo].str.strip().str[0].str.upper() if c_sexo else None,
-            "nascimento": pd.to_datetime(df[c_nasc], errors="coerce", dayfirst=True) if c_nasc else pd.NaT,
-            "ramo": df[c_ramo].map(lambda v: sem_acento(v).upper().strip() if isinstance(v, str) else None) if c_ramo else None,
+            "nascimento": pd.to_datetime(df[c_nasc], errors="coerce", format="mixed", dayfirst=True) if c_nasc else pd.NaT,
+            "filiacao": df[c_filiacao].map(_filiacao) if c_filiacao else "outros",
         })
         ref = pd.to_datetime(limpo["competencia"] + "01", format="%Y%m%d")
         limpo["idade"] = ((ref - limpo["nascimento"]).dt.days // 365.25).astype("Int64")
