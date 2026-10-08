@@ -19,7 +19,7 @@ SELECT {ano} AS ano,
        substr(lpad(CAST("{municipio}" AS VARCHAR), 6, '0'), 1, 2)::INT AS uf_cod,
        substr(lpad(CAST("{cnae}" AS VARCHAR), 5, '0'), 1, 2)::INT AS divisao,
        count(*) AS vinculos
-FROM read_csv('{arquivo}', delim=';', header=true, encoding='latin-1', all_varchar=true)
+FROM read_csv('{arquivo}', header=true, encoding='latin-1', all_varchar=true)
 WHERE trim("{ativo}") = '1'
 GROUP BY ALL
 """
@@ -35,7 +35,8 @@ def _achar(colunas: list[str], *partes: str) -> str:
 
 
 def resumir(con: duckdb.DuckDBPyConnection, ano: int, txt) -> "pd.DataFrame":
-    colunas = con.sql(f"SELECT * FROM read_csv('{txt}', delim=';', header=true, "
+    # O separador mudou entre anos (';' antes, ',' com aspas em 2023): deixamos o DuckDB detectar.
+    colunas = con.sql(f"SELECT * FROM read_csv('{txt}', header=true, "
                       f"encoding='latin-1', all_varchar=true) LIMIT 0").columns
     municipio = next((c for c in colunas if c.lower().startswith("munic") and "trab" not in c.lower()), None) \
         or _achar(colunas, "munic")
