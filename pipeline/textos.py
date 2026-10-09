@@ -21,6 +21,10 @@ def pval(p) -> str:
     return "–" if p is None else ("< 0,001" if p < 0.001 else br(p, 3))
 
 
+def meses(k) -> str:
+    return f"{k} mês" if k == 1 else f"{k} meses"
+
+
 def pp(p) -> str:
     """'p = 0,083' ou 'p < 0,001', para usar no meio do texto."""
     return "p não calculado" if p is None else ("p < 0,001" if p < 0.001 else f"p = {br(p, 3)}")
@@ -34,16 +38,16 @@ def txt_regressao(reg):
     sig = [x for x in reg["modelos"] if x["p_valor"] is not None and x["p_valor"] < 0.05]
     if not sig:
         return (f"Em nenhuma das defasagens testadas (0 a 6 meses) o coeficiente foi estatisticamente significativo a 5%. "
-                f"O mais forte foi o de {m['defasagem_meses']} mês(es), com {pp(m['p_valor'])}. Depois de descontada a "
+                f"O mais forte foi o de {meses(m['defasagem_meses'])}, com {pp(m['p_valor'])}. Depois de descontada a "
                 "tendência, as oscilações mensais das demissões não acompanham as dos afastamentos no agregado nacional.")
     k = m["defasagem_meses"]
     efeito = m["coef"] * 100
     sentido = "a mais" if efeito > 0 else "a menos"
-    return (f"A associação mais forte aparece com {k} mês(es) de defasagem: a cada 100 demissões sem justa causa a mais por "
+    return (f"A associação mais forte aparece com {meses(k)} de defasagem: a cada 100 demissões sem justa causa a mais por "
             f"100 mil vínculos, há em média {br(abs(efeito), 1)} afastamentos por saúde mental {sentido} por 100 mil vínculos "
             f"({pp(m['p_valor'])}; IC 95% de {br(m['ic95'][0] * 100, 1)} a {br(m['ic95'][1] * 100, 1)}). "
             f"Em termos relativos, +1% na taxa de demissão corresponde a {br(m['elasticidade'], 2).replace('-', '−')}% na taxa de "
-            f"afastamento. Defasagens significativas a 5%: {', '.join(str(x['defasagem_meses']) for x in sig)} mês(es).")
+            f"afastamento. Defasagens significativas a 5%: {', '.join(str(x['defasagem_meses']) for x in sig)} (em meses).")
 
 
 def _min_p(lista):
@@ -58,12 +62,12 @@ def txt_granger(g):
     partes = []
     if a:
         if a["p_valor"] < 0.05:
-            partes.append(f"o passado das demissões ajuda a prever os afastamentos (menor {pp(a['p_valor'])}, com {a['defasagem_meses']} mês(es))")
+            partes.append(f"o passado das demissões ajuda a prever os afastamentos (menor {pp(a['p_valor'])}, com {meses(a['defasagem_meses'])})")
         else:
             partes.append(f"o passado das demissões não melhora a previsão dos afastamentos de forma significativa (menor {pp(a['p_valor'])})")
     if b:
         if b["p_valor"] < 0.05:
-            partes.append(f"no sentido inverso, os afastamentos ajudam a prever as demissões (menor {pp(b['p_valor'])}, com {b['defasagem_meses']} mês(es))")
+            partes.append(f"no sentido inverso, os afastamentos ajudam a prever as demissões (menor {pp(b['p_valor'])}, com {meses(b['defasagem_meses'])})")
         else:
             partes.append(f"no sentido inverso também não há sinal significativo (menor {pp(b['p_valor'])})")
     if not partes:
@@ -86,10 +90,22 @@ def txt_painel(pn):
     return s
 
 
+def veredito_floresta(rf) -> str:
+    """'base' (a média de cada estado erra menos), 'ajuda', 'neutro' ou 'piora'."""
+    if rf["mae_base"] is not None and rf["mae_base"] < rf["mae"]:
+        return "base"
+    ganho = ganho_floresta(rf)
+    return "ajuda" if ganho > 3 else "neutro" if ganho > -3 else "piora"
+
+
+def ganho_floresta(rf) -> float:
+    return (rf["mae_sem_mercado"] - rf["mae"]) / rf["mae_sem_mercado"] * 100 if rf["mae_sem_mercado"] else 0
+
+
 def txt_floresta(rf):
     if "erro" in rf:
         return f"O modelo não pôde ser treinado: {rf['erro']}."
-    ganho = (rf["mae_sem_mercado"] - rf["mae"]) / rf["mae_sem_mercado"] * 100 if rf["mae_sem_mercado"] else 0
+    ganho = ganho_floresta(rf)
     s = (f"Treinado com {mes(rf['treino']['de'])} a {mes(rf['treino']['ate'])} e testado de {mes(rf['teste']['de'])} a "
          f"{mes(rf['teste']['ate'])}, meses que o modelo não viu, o erro médio foi de {br(rf['mae'], 1)} afastamentos por 100 mil "
          f"vínculos (a taxa média no período de teste é {br(rf['media_taxa_teste'], 1)}), com R² de {br(rf['r2'], 2)}. "
@@ -101,6 +117,9 @@ def txt_floresta(rf):
         s += "As informações de demissões, pedidos e admissões praticamente não mudam o erro: o nível de cada estado e a sazonalidade explicam quase tudo o que o modelo consegue prever."
     else:
         s += "Incluir demissões, pedidos e admissões chega a piorar o erro, sinal de que, nesta janela, elas acrescentam mais ruído do que informação."
+    if veredito_floresta(rf) == "base":
+        s += (" Além disso, a simples média histórica de cada estado erra menos do que os dois modelos. Com poucos meses de "
+              "treino, o padrão mais forte é o nível típico de cada estado, e o que as variáveis de mercado acrescentam é pequeno perto disso.")
     top = rf["importancias"][0]
     s += f" A variável mais importante foi “{top['nome'].lower()}”."
     return s
