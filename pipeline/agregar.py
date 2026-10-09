@@ -127,6 +127,41 @@ def correlacoes(s: pd.DataFrame, ultimos: list[str]) -> dict:
     return {"serie_nacional": defasagens, "entre_ufs": {"r": r_uf, "n_ufs": int(len(pontos)), "meses": ultimos}}
 
 
+def memoria(con, ultimos: list[str]) -> dict:
+    """Contagens de cada etapa do cruzamento, para a memória de cálculo."""
+    comps = ",".join(f"'{m.replace('-', '')}'" for m in ultimos)
+    por_especie = con.sql(f"""
+        SELECT especie, count(*) AS n, count(*) FILTER (uf IS NULL) AS sem_uf,
+               count(*) FILTER ({GRUPO_SQL} <> 'outros') AS mental
+        FROM inss WHERE competencia IN ({comps}) GROUP BY ALL ORDER BY 1
+    """).df()
+    grupos = con.sql(f"""
+        SELECT {GRUPO_SQL} AS grupo, count(*) AS n FROM inss
+        WHERE competencia IN ({comps}) AND especie IN {LISTA(AFASTAMENTO)} AND uf IS NOT NULL
+        GROUP BY ALL ORDER BY 2 DESC
+    """).df()
+    caged = con.sql(f"""
+        SELECT CASE WHEN tipo_mov IN {LISTA(CAGED_SEM_JUSTA_CAUSA)} THEN 'sem_justa_causa'
+                    WHEN tipo_mov IN {LISTA(CAGED_A_PEDIDO)} THEN 'a_pedido'
+                    WHEN saldo < 0 THEN 'outros_desligamentos' ELSE 'admissoes' END AS tipo,
+               sum(n) AS n
+        FROM caged WHERE competencia IN ({comps}) GROUP BY ALL ORDER BY 2 DESC
+    """).df()
+    rais = con.sql("SELECT ano, sum(vinculos) AS vinculos FROM rais GROUP BY 1 ORDER BY 1").df()
+    meses_inss = con.sql("SELECT DISTINCT competencia FROM inss ORDER BY 1").df().competencia.tolist()
+    meses_caged = con.sql("SELECT DISTINCT competencia FROM caged ORDER BY 1").df().competencia.tolist()
+    rec = lambda d: json.loads(d.to_json(orient="records", force_ascii=False))  # noqa: E731
+    return {
+        "meses": ultimos,
+        "inss_por_especie": rec(por_especie),
+        "inss_grupos_afastamento": rec(grupos),
+        "caged_movimentos": rec(caged),
+        "rais_vinculos": rec(rais),
+        "meses_inss": [m[:4] + "-" + m[4:] for m in meses_inss],
+        "meses_caged": [m[:4] + "-" + m[4:] for m in meses_caged],
+    }
+
+
 def _json(nome: str, dados) -> None:
     if isinstance(dados, pd.DataFrame):
         dados = json.loads(dados.to_json(orient="records", force_ascii=False))
@@ -149,6 +184,7 @@ def agregar(exemplo: bool = False) -> None:
     _json("filiacao.json", filiacao(con))
     _json("bpc_autismo.json", bpc_autismo(con))
     _json("correlacao.json", correlacoes(s, ultimos))
+    _json("memoria.json", memoria(con, ultimos))
     _json("meta.json", {
         "gerado_em": dt.datetime.now().isoformat(timespec="minutes"),
         "exemplo": exemplo,

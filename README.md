@@ -15,6 +15,9 @@ pipeline/
   coleta/          download de cada fonte (inss.py, caged.py, rais.py)
   transformar.py   brutos -> data/clean/*.parquet
   agregar.py       cruza as fontes e gera site/public/data/*.json
+  analise.py       análises com statsmodels e scikit-learn (regressões, Granger, Random Forest, K-means, Holt-Winters, Isolation Forest)
+  textos.py        textos de interpretação montados a partir dos resultados
+  relatorio.py     relatório acadêmico em PDF (site/public/relatorio.pdf)
   exemplo.py       gera dados FICTÍCIOS no formato real, para testes
   run.py           roda tudo
 site/              Next.js + Apache ECharts, exportado como site estático

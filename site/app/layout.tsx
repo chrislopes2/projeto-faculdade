@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { BASE } from "@/lib/calc";
 import { carregar } from "@/lib/dados";
 
 export const metadata: Metadata = {
@@ -21,7 +22,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link href="/afastamentos/">Afastamentos</Link>
               <Link href="/demissoes/">Demissões</Link>
               <Link href="/relacao/">Relação</Link>
+              <Link href="/analises/">Análises</Link>
+              <Link href="/memoria/">Memória de cálculo</Link>
               <Link href="/metodologia/">Metodologia</Link>
+              <a href={`${BASE}/relatorio.pdf`}>Relatório (PDF)</a>
             </nav>
           </div>
         </header>
