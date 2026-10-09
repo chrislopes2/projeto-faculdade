@@ -26,7 +26,7 @@ from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, Simpl
 
 from pipeline.config import ESPECIES, SAIDA  # noqa: E402
 from pipeline.textos import (br, mes, pval, txt_agrupamento, txt_floresta, txt_granger,  # noqa: E402
-                             txt_painel, txt_previsao, txt_regressao)
+                             txt_painel, txt_previsao, txt_regressao, veredito_floresta)
 
 DESTINO = SAIDA.parent / "relatorio.pdf"
 AUTOR = "Cristhofer Maciel"
@@ -420,9 +420,10 @@ def gerar() -> Path:
         concl.append("A relação com as demissões aparece também dentro de cada estado, ao longo do tempo." if b["p_valor"] is not None and b["p_valor"] < 0.05
                      else "Entre estados, onde se demite mais há tendência de mais afastamentos, mas, controlando as diferenças permanentes entre estados e os choques comuns de cada mês, essa relação não se sustenta estatisticamente.")
     if "erro" not in rf:
-        ganho = (rf["mae_sem_mercado"] - rf["mae"]) / rf["mae_sem_mercado"] * 100 if rf["mae_sem_mercado"] else 0
-        concl.append("O modelo de aprendizado de máquina confirma que as variáveis de demissão ajudam a prever os afastamentos." if ganho > 3
-                     else "O modelo de aprendizado de máquina indica que o nível típico de cada estado e a sazonalidade explicam mais do que as demissões.")
+        concl.append({
+            "ajuda": "O modelo de aprendizado de máquina indica que as variáveis de demissão ajudam a prever os afastamentos.",
+            "base": "No aprendizado de máquina, as variáveis de demissão melhoram um pouco a previsão, mas o nível típico de cada estado prevê melhor do que qualquer combinação com elas.",
+        }.get(veredito_floresta(rf), "O modelo de aprendizado de máquina indica que o nível típico de cada estado e a sazonalidade explicam mais do que as demissões."))
     concl.append("Os resultados devem ser lidos como evidência de associação, a ser aprofundada com dados individuais, que hoje não são públicos.")
     h += [P("8. Conclusão", "h1"), P(" ".join(concl))]
     h += [P("Referências", "h1"), *itens([
